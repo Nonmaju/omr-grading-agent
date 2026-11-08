@@ -13,11 +13,9 @@ st.set_page_config(page_title="영어 학원 평가 도우미", page_icon="📝"
 theme.apply(hide_sidebar=True)
 
 # ---- 페이지 버튼 (좌상단) ----
-nav = st.columns([1.2, 1.2, 1.6, 4])
+nav = st.columns([1.2, 1.2, 5.6])
 nav[0].page_link("app.py", label="서비스 소개", icon="🏠")
 nav[1].page_link("pages/analysis.py", label="채점·분석", icon="📊")
-with nav[3]:
-    theme.picker()  # 시안 선택(임시)
 
 # ---- 로고(중앙) + 서비스명 ----
 st.write("")

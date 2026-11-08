@@ -3,3 +3,10 @@ showErrorDetails = false
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#2DD4BF"
+backgroundColor = "#0B1220"
+secondaryBackgroundColor = "#131E36"
+textColor = "#E7EEF9"
