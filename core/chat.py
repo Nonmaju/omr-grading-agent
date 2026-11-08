@@ -5,6 +5,7 @@
 전체 응답 20초 제한을 지키기 위해 단계마다 남은 시간(deadline)을 넘지 않도록 타임아웃을 둔다.
 """
 import json
+import logging
 import os
 import re
 import time
@@ -14,8 +15,9 @@ import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from core.grading import Result, find_student, hardest, lowest_students, summary, wrong_counts
+from core.grading import Result, find_student, hardest, lowest_students, summary, top_ties, wrong_counts
 
+log = logging.getLogger(__name__)
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")  # 아래 os.getenv보다 먼저 읽어야 .env의 모델 설정이 반영된다
 
 MODEL = os.getenv("CHAT_MODEL", "gpt-4.1-mini")            # 답변 생성
@@ -121,14 +123,14 @@ def classify(question: str, history: list[dict], deadline: float) -> tuple[str, 
         intent, conf = classify_decisions(text, left(4))
         if conf >= MIN_CONFIDENCE and intent in INTENTS:
             return intent, "decisions"
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("Decisions API 실패 → function calling으로 대체: %r", e)
     try:
         intent = classify_function_calling(text, left(5))
         if intent in INTENTS:
             return intent, "function_calling"
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("function calling 분류 실패 → 일상 대화로 처리: %r", e)
     return "chitchat", "default"
 
 
@@ -168,6 +170,7 @@ def base_facts(r: Result) -> str:
         "점수 구간별 인원: " + ", ".join(f"{k} {int(v)}명" for k, v in bands.items()),
         f"가장 많이 틀린 문항 TOP3(오답 많은 순, 동률은 배점 높은 순): " + "; ".join(
             f"{x['문항']}번 오답 {x['오답 수']}명" for x in hardest(r, 3).to_dict("records")),
+        ("3위와 오답 수가 같은 문항: " + ", ".join(f"{q}번" for q in ties)) if (ties := top_ties(r, 3)) else "",
         f"문항별 오답 수(전체 {n}명): " + ", ".join(
             f"{x['문항']}번 {x['오답 수']}명({x['오답 수'] / n:.0%})" for x in wc.to_dict("records")),
     ])
@@ -214,7 +217,8 @@ def answer(question: str, history: list[dict], r: Result, problems: dict[int, st
         resp = _client().chat.completions.create(
             model=MODEL, messages=msgs, temperature=0.3, timeout=max(2.0, deadline - time.time()))
         text = resp.choices[0].message.content.strip()
-    except Exception:
+    except Exception as e:
+        log.warning("답변 생성 실패: %r", e)
         # 내부 지시문/원문제가 사용자에게 새지 않도록 사람이 읽는 문장만 낸다.
         text = BUSY_GEN if gen else (facts or BUSY)
         info["llm_fallback"] = True
