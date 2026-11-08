@@ -37,11 +37,44 @@ docs/                설계 문서
 
 ## 챗봇 동작 방식
 
+### 전체 파이프라인
+
+```mermaid
+flowchart LR
+    A[문제지 PDF] --> P
+    B[OMR 결과 Excel] --> P
+    C[정답 PDF] --> P
+    P[분석 시작] --> K[정답 PDF 파싱<br/>문항 번호 · 정답 · 배점]
+    P --> Q[문제지 PDF 파싱<br/>문항별 본문]
+    P --> O[OMR 로드]
+    K --> G[채점 · 통계<br/>pandas]
+    O --> G
+    G --> X[엑셀 추출<br/>개요 · 전체 결과 · 학생별 시트]
+    G --> CH[채팅 활성화]
+    Q --> CH
 ```
-질문 ─▶ ① 의도 분류 ─▶ ② 코드로 데이터 조회(pandas) ─▶ ③ LLM이 문장으로 답변
-         Decisions API      평균/중앙값/점수/오답 순위            (조회 결과만 사용)
-         └ 실패·저신뢰 시 function calling으로 자동 대체
+
+### 챗봇 응답 흐름
+
+```mermaid
+flowchart TD
+    U[사용자 질문<br/>+ 직전 대화] --> D{의도 분류<br/>Decisions API<br/>제한 시간 약 3초}
+    D -- 확신도 0.6 이상 --> R[의도 결정]
+    D -- 오류 · 시간 초과 · 저신뢰 --> F{function calling<br/>으로 재분류}
+    F -- 성공 --> R
+    F -- 실패 --> CC[일상 대화로 처리]
+    R --> M{내부 구성 질문<br/>인젝션?}
+    CC --> L
+    M -- 예 --> S[고정 안내 문장<br/>LLM 호출 없음]
+    M -- 아니오 --> T[데이터 조회<br/>pandas 코드가 계산]
+    T --> L[LLM이 조회 결과만으로<br/>문장 생성]
+    L -- 성공 --> A[답변]
+    L -- 시간 초과 --> TF[조회 결과 원문으로 답변]
+    S --> A
+    TF --> A
 ```
+
+의도는 8가지입니다. `summary_stats`(평균·중앙값·표준편차), `lowest_student`, `student_score`, `hardest_questions`, `generate_similar_problem`, `out_of_scope`(데이터에 없는 정보), `meta_or_injection`, `chitchat`.
 
 - **숫자는 LLM이 계산하지 않습니다.** 평균·중앙값·점수·오답 순위는 pandas로 계산하고, LLM은 조회 결과를 문장으로 옮기기만 합니다.
 - **데이터에 없는 질문**(예: "13번 학생 어제 수업 참여했어?")은 "채점 데이터에 없어 알 수 없다"고 답합니다.
