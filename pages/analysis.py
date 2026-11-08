@@ -1,4 +1,6 @@
 """페이지 2: 데이터 입력 · 자동 채점 · 엑셀 추출 · 채팅."""
+from pathlib import Path
+
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -41,7 +43,7 @@ done = "result" in ss
 
 # ---------------------------------------------------------------- 사이드바
 with st.sidebar:
-    st.markdown('<div class="logo">가천대학교<br><small>로고 위치</small></div>', unsafe_allow_html=True)
+    st.image(str(Path(__file__).resolve().parent.parent / "assets" / "gachon_logo.png"), width=120)
     st.page_link("app.py", label="서비스 소개", icon="🏠")
     st.page_link("pages/analysis.py", label="채점·분석", icon="📊")
     history = st.container()  # 채팅 내역: 대화가 갱신된 뒤 아래쪽에서 채움

@@ -1,4 +1,6 @@
 """영어 학원 평가 도우미 - 페이지 1: 서비스 소개 (랜딩)."""
+from pathlib import Path
+
 import streamlit as st
 
 st.set_page_config(page_title="영어 학원 평가 도우미", page_icon="📝", layout="wide")
@@ -45,13 +47,7 @@ def link(path, label, icon, **kw):
 
 # ---- 사이드바 ----
 with st.sidebar:
-    st.markdown(
-        '<div style="text-align:center;padding:1rem;border:2px dashed rgba(128,128,128,.4);'
-        'border-radius:12px;opacity:.7;font-weight:600;">가천대학교<br>'
-        '<span style="font-size:.8rem;font-weight:400;">로고 위치</span></div>',
-        unsafe_allow_html=True,
-    )
-    st.write("")
+    st.image(str(Path(__file__).parent / "assets" / "gachon_logo.png"), width=120)
     link("app.py", "서비스 소개", "🏠")
     link("pages/analysis.py", "채점·분석", "📊")
     st.caption("영어 학원 평가 도우미 v1.0")
