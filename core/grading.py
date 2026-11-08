@@ -17,12 +17,19 @@ class Result:
 def grade(omr_file, key) -> Result:
     df = pd.read_excel(omr_file)
     name_col = df.columns[0]
-    qcols = {int(m.group(1)): c for c in df.columns[1:] if (m := re.fullmatch(r"Q(\d+)", str(c).strip()))}
-    missing = [q for q in key if q not in qcols]
+    qcols = {int(m.group(1)): c for c in df.columns[1:]
+             if (m := re.fullmatch(r"(?:Q|문항)?\s*0*(\d+)\s*번?", str(c).strip(), re.I))}  # Q01, q1, 1, 1번, 문항1 모두 허용
+    missing = sorted(q for q in key if q not in qcols)
     if missing:
         raise ValueError(f"OMR 파일에 없는 문항: {missing}")
     qs = sorted(key)
-    marked = df[[qcols[q] for q in qs]].set_axis(qs, axis=1).set_axis(df[name_col].astype(str), axis=0)
+    seen: dict[str, int] = {}
+    names = []
+    for n in df[name_col].astype(str):  # 학생명이 중복이면 '이름(2)'처럼 구분한다(인덱스 중복으로 인한 오류 방지)
+        seen[n] = seen.get(n, 0) + 1
+        names.append(n if seen[n] == 1 else f"{n}({seen[n]})")
+    marked = df[[qcols[q] for q in qs]].set_axis(qs, axis=1).set_axis(names, axis=0)
+    marked = marked.replace({"①": 1, "②": 2, "③": 3, "④": 4, "⑤": 5})
     marked = marked.apply(pd.to_numeric, errors="coerce")  # 빈칸/이상값은 NaN → 오답
     answers = pd.Series({q: key[q][0] for q in qs})
     points = pd.Series({q: key[q][1] for q in qs})

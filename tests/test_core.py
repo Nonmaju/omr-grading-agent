@@ -54,3 +54,34 @@ def test_excel():
     wb = openpyxl.load_workbook(io.BytesIO(to_excel(r)))
     assert wb.sheetnames[0] == "전체 학생 성적 개요" and len(wb.sheetnames) == 2 + 10
     assert "10번 학생 점수 및 각 문제별 정답 여부" in wb.sheetnames
+
+
+def _omr(rows, cols):
+    buf = io.BytesIO()
+    pd.DataFrame(rows, columns=["학생명", *cols]).to_excel(buf, index=False)
+    buf.seek(0)
+    return buf
+
+
+def test_robust_omr_input():
+    key = {1: (3, 2), 2: (1, 3)}
+    # 열 이름 변형(q01, 2번), 원문자 마킹(③), 빈칸, 중복 학생명
+    r = grade(_omr([["홍길동", "③", 1], ["홍길동", 3, None]], ["q01", "2번"]), key)
+    assert r.names == ["홍길동", "홍길동(2)"]
+    assert list(r.scores) == [5, 2]
+    assert len(to_excel(r)) > 0  # 중복 이름에서도 엑셀 생성이 터지지 않음
+
+
+def test_missing_columns_listed_sorted():
+    try:
+        grade(_omr([["a", 1]], ["Q01"]), {1: (1, 2), 3: (1, 2), 2: (1, 2)})
+    except ValueError as e:
+        assert "[2, 3]" in str(e)
+    else:
+        raise AssertionError("누락 문항 오류가 나야 함")
+
+
+def test_excel_sheet_order():
+    r = grade(OMR, parse_answer_pdf(ANS))
+    names = openpyxl.load_workbook(io.BytesIO(to_excel(r))).sheetnames
+    assert names[0] == "전체 학생 성적 개요" and names[1].startswith("1번 학생") and names[-1] == "전체 학생 결과"

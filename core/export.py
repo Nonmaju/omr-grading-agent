@@ -16,12 +16,7 @@ def to_excel(r: Result) -> bytes:
         top = hardest(r, 3).rename(columns={"문항": "가장 많이 틀린 문항 번호"})
         top.insert(0, "순위", range(1, len(top) + 1))
         top.to_excel(w, sheet_name="전체 학생 성적 개요", index=False, startrow=len(ov) + 2)
-
-        # 2) 전체 학생 결과 (한눈에 보기)
-        allr = r.correct.map(lambda b: "O" if b else "X")
-        allr.columns = [f"Q{q:02d}" for q in allr.columns]
-        allr.insert(0, "점수", r.scores)
-        allr.reset_index(names="학생명").to_excel(w, sheet_name="전체 학생 결과", index=False)
+        w.sheets["전체 학생 성적 개요"].set_column(0, 4, 22)
 
         # 3) 학생별 시트: N번 학생 점수 및 각 문제별 정답 여부
         for i, name in enumerate(r.names, 1):
@@ -35,4 +30,12 @@ def to_excel(r: Result) -> bytes:
             sheet = f"{i}번 학생 점수 및 각 문제별 정답 여부"
             pd.DataFrame({"학생명": [name], "점수": [r.scores[name]]}).to_excel(w, sheet_name=sheet, index=False)
             d.to_excel(w, sheet_name=sheet, index=False, startrow=3)
+            w.sheets[sheet].set_column(0, 4, 12)
+
+        # 2) 전체 학생 결과 (한눈에 보기) — 요구 그림의 시트 순서를 지키려고 맨 뒤에 둔다
+        allr = r.correct.map(lambda b: "O" if b else "X")
+        allr.columns = [f"Q{q:02d}" for q in allr.columns]
+        allr.insert(0, "점수", r.scores)
+        allr.reset_index(names="학생명").to_excel(w, sheet_name="전체 학생 결과", index=False)
+        w.sheets["전체 학생 결과"].set_column(0, 0, 14)
     return buf.getvalue()
