@@ -43,6 +43,9 @@ with st.sidebar:
     st.download_button("📥 엑셀 추출", data=ss.get("excel", b""), file_name="채점_결과.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                        width="stretch", disabled=not done)
+    st.divider()
+    st.caption("시안 미리보기(임시)")
+    theme.picker()
 
 # ---------------------------------------------------------------- 분석 시작
 ok = False
