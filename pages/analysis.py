@@ -31,16 +31,16 @@ done = "result" in ss
 
 # ---------------------------------------------------------------- 사이드바
 with st.sidebar:
-    st.page_link("app.py", label="서비스 소개", icon="🏠")
-    st.page_link("pages/analysis.py", label="채점·분석", icon="📊")
+    st.page_link("app.py", label="서비스 소개", icon=":material/home:")
+    st.page_link("pages/analysis.py", label="채점·분석", icon=":material/bar_chart:")
     with st.container(border=True):
         st.markdown("**데이터 업로드**")
         st.caption("Drag & Drop")
         prob_f = st.file_uploader("문제지 (PDF)", type="pdf", key="prob")
         omr_f = st.file_uploader("OMR 결과 (Excel)", type=["xlsx", "xls"], key="omr")
         ans_f = st.file_uploader("정답지 (PDF)", type="pdf", key="ans")
-    start = st.button("🚀 분석 시작", type="primary", width="stretch", disabled=not (prob_f and omr_f and ans_f))
-    st.download_button("📥 엑셀 추출", data=ss.get("excel", b""), file_name="채점_결과.xlsx",
+    start = st.button("분석 시작", icon=":material/play_arrow:", type="primary", width="stretch", disabled=not (prob_f and omr_f and ans_f))
+    st.download_button("엑셀 추출", icon=":material/download:", data=ss.get("excel", b""), file_name="채점_결과.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                        width="stretch", disabled=not done)
 
@@ -83,8 +83,14 @@ if done and all((prob_f, omr_f, ans_f)) and tuple((f.name, f.size) for f in (pro
 chat_box = st.container(height=600, border=True)  # 채팅 내역
 with chat_box:
     if not done:
-        st.markdown("##### 채팅 내역")
-        st.caption("왼쪽 사이드바에 문제지·OMR·정답지를 올리고 **분석 시작**을 누르면 채점이 끝난 뒤 여기서 대화할 수 있어요.")
+        st.markdown(
+            '<div class="empty-title"><h3>채팅 내역</h3><small>채점이 끝나면 여기서 성적에 대해 대화할 수 있어요</small></div>'
+            '<div class="steps">'
+            '<div class="step"><i>1</i><div><b>파일 올리기</b><span>왼쪽에 문제지, OMR 결과, 정답지를 올려 주세요</span></div></div>'
+            '<div class="step"><i>2</i><div><b>분석 시작</b><span>버튼 한 번으로 정답 추출과 채점이 진행돼요</span></div></div>'
+            '<div class="step"><i>3</i><div><b>엑셀 추출 · 질문하기</b><span>결과를 내려받거나 궁금한 점을 물어보세요</span></div></div>'
+            '</div>',
+            unsafe_allow_html=True)
     else:
         s = summary(ss.result)
         with st.chat_message("assistant"):  # 안내 메시지(대화 이력에는 넣지 않는다)
