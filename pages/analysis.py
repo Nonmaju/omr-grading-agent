@@ -1,4 +1,5 @@
 """페이지 2: 데이터 입력 · 자동 채점 · 엑셀 추출 · 채팅."""
+import os
 from pathlib import Path
 
 import streamlit as st
@@ -37,6 +38,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+
+def _secret_key() -> str:
+    try:
+        return st.secrets["OPENAI_API_KEY"]
+    except Exception:
+        return ""
+
+
 ss = st.session_state
 ss.setdefault("messages", [])
 done = "result" in ss
@@ -52,13 +62,14 @@ with st.sidebar:
     prob_f = st.file_uploader("문제지 (PDF)", type="pdf", key="prob")
     omr_f = st.file_uploader("OMR 결과 (Excel)", type=["xlsx", "xls"], key="omr")
     ans_f = st.file_uploader("정답지 (PDF)", type="pdf", key="ans")
-    start = st.button("🚀 분석 시작", type="primary", use_container_width=True,
+    start = st.button("🚀 분석 시작", type="primary", width="stretch",
                       disabled=not (prob_f and omr_f and ans_f))
     st.download_button("📥 엑셀 추출", data=ss.get("excel", b""), file_name="채점_결과.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                       use_container_width=True, disabled=not done)
+                       width="stretch", disabled=not done)
 
 # ---------------------------------------------------------------- 분석 시작
+ok = False
 if start:
     with st.spinner("정답을 추출하고 채점하는 중입니다..."):
         try:
@@ -68,13 +79,17 @@ if start:
                 problems = parse_problems_pdf(prob_f)
             except Exception:
                 problems = {}  # 문제 본문은 유사 문제 생성에만 쓰이므로 실패해도 채점은 계속
-            ss.update(result=result, problems=problems, excel=to_excel(result), messages=[])
-            done = True
+            warn = ("문제지에서 문항 본문을 모두 읽지 못했어요(문제지와 정답지를 바꿔 올리지 않았는지 확인해 주세요). "
+                    "채점은 정상이지만 유사 문제 생성의 품질이 떨어질 수 있어요.") if len(problems) < len(key) else ""
+            ss.update(result=result, problems=problems, excel=to_excel(result), messages=[], warn=warn)
+            ok = True
         except Exception as e:
             ss.pop("result", None)
             ss.pop("excel", None)
             done = False
             st.error(f"분석에 실패했습니다: {e}")
+if ok:
+    st.rerun()  # 사이드바의 엑셀 버튼은 위에서 이미 그려졌으므로, 채점 직후 활성 상태로 다시 그린다
 
 # ---------------------------------------------------------------- 본문
 st.markdown(
@@ -82,6 +97,10 @@ st.markdown(
     '<p>OMR 자동 채점 · 성적 분석 · 질문 챗봇</p></div>',
     unsafe_allow_html=True,
 )
+if not (os.getenv("OPENAI_API_KEY") or _secret_key()):
+    st.error("OpenAI API 키가 설정되지 않았어요. 관리자에게 문의해 주세요. (채점·엑셀은 가능하지만 채팅은 동작하지 않습니다)")
+if ss.get("warn"):
+    st.warning(ss.warn)
 if not done:
     st.markdown(
         '<div class="guide">'
