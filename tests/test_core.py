@@ -85,3 +85,37 @@ def test_excel_sheet_order():
     r = grade(OMR, parse_answer_pdf(ANS))
     names = openpyxl.load_workbook(io.BytesIO(to_excel(r))).sheetnames
     assert names[0] == "전체 학생 성적 개요" and names[1].startswith("1번 학생") and names[-1] == "전체 학생 결과"
+
+
+def test_sheet_and_name_column_detection():
+    """첫 시트가 안내문이고 첫 열이 '번호'여도 문항 시트/학생명 열을 찾는다."""
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf) as w:
+        pd.DataFrame({"안내": ["표지"]}).to_excel(w, sheet_name="표지", index=False)
+        pd.DataFrame({"번호": [1, 2], "학생명": ["가", "나"], "Q01": [3, 1], "Q02": [1, 1]}).to_excel(w, sheet_name="OMR", index=False)
+    buf.seek(0)
+    r = grade(buf, {1: (3, 2), 2: (1, 3)})
+    assert r.names == ["가", "나"] and list(r.scores) == [5, 3]
+
+
+def test_invalid_and_blank_counts_and_long_name():
+    key = {1: (3, 2), 2: (1, 3), 3: (2, 2)}
+    long = "홍길동\n" + "x" * 100
+    r = grade(_omr([[long, 3, None, "abc"], ["b", 9, 1, 2]], ["Q01", "Q02", "Q03"]), key)
+    assert r.blank == 1 and r.invalid == 2          # 빈칸 1, 문자 'abc'와 범위 밖 9
+    assert "\n" not in r.names[0] and len(r.names[0]) <= 40
+
+
+def test_top_ties_note():
+    from core.grading import top_ties
+    key = {q: (1, 2) for q in range(1, 6)}
+    # 문항별 오답 수: 1번 3명, 2번 2명, 3번 2명, 4번 2명, 5번 0명 → 3위(2번 기준 동점) 밖의 4번이 동점
+    rows = [["a", 2, 2, 2, 2, 1], ["b", 2, 2, 2, 2, 1], ["c", 2, 1, 1, 1, 1]]
+    r = grade(_omr(rows, [f"Q{i}" for i in range(1, 6)]), key)
+    assert top_ties(r, 3) == [4]
+
+
+def test_excel_all_students_sheet_has_order_column():
+    r = grade(OMR, parse_answer_pdf(ANS))
+    ws = openpyxl.load_workbook(io.BytesIO(to_excel(r)))["전체 학생 결과"]
+    assert [c.value for c in ws[1]][:3] == ["번호", "학생명", "점수"]
