@@ -1,4 +1,5 @@
 """영어 학원 평가 도우미 - 페이지 1: 서비스 소개 (랜딩)."""
+import logging
 from pathlib import Path
 
 import streamlit as st
@@ -41,7 +42,8 @@ def link(path, label, icon, **kw):
     # 페이지 파일이 아직 없거나 단독 실행이어도 랜딩이 깨지지 않도록 처리
     try:
         st.page_link(path, label=label, icon=icon, **kw)
-    except Exception:
+    except Exception as e:
+        logging.getLogger(__name__).warning("page_link 실패(%s): %r", path, e)  # 배포 오류가 가려지지 않게 로그를 남긴다
         st.caption(f"{label} (준비 중)")
 
 

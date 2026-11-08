@@ -79,9 +79,14 @@ if start:
                 problems = parse_problems_pdf(prob_f)
             except Exception:
                 problems = {}  # 문제 본문은 유사 문제 생성에만 쓰이므로 실패해도 채점은 계속
-            warn = ("문제지에서 문항 본문을 모두 읽지 못했어요(문제지와 정답지를 바꿔 올리지 않았는지 확인해 주세요). "
-                    "채점은 정상이지만 유사 문제 생성의 품질이 떨어질 수 있어요.") if len(problems) < len(key) else ""
-            ss.update(result=result, problems=problems, excel=to_excel(result), messages=[], warn=warn)
+            warns = []
+            if len(problems) < len(key):
+                warns.append("문제지에서 문항 본문을 모두 읽지 못했어요(문제지와 정답지를 바꿔 올리지 않았는지 확인해 주세요). "
+                             "채점은 정상이지만 유사 문제 생성의 품질이 떨어질 수 있어요.")
+            if result.blank or result.invalid:
+                warns.append(f"OMR에 빈칸 {result.blank}칸, 인식할 수 없는 값 {result.invalid}칸이 있어요. 이 칸은 오답으로 채점했어요.")
+            ss.update(result=result, problems=problems, excel=to_excel(result), messages=[], warns=warns,
+                      sig=tuple((f.name, f.size) for f in (prob_f, omr_f, ans_f)))
             ok = True
         except Exception as e:
             ss.pop("result", None)
@@ -99,8 +104,10 @@ st.markdown(
 )
 if not (os.getenv("OPENAI_API_KEY") or _secret_key()):
     st.error("OpenAI API 키가 설정되지 않았어요. 관리자에게 문의해 주세요. (채점·엑셀은 가능하지만 채팅은 동작하지 않습니다)")
-if ss.get("warn"):
-    st.warning(ss.warn)
+for w_ in ss.get("warns", []):
+    st.warning(w_)
+if done and all((prob_f, omr_f, ans_f)) and tuple((f.name, f.size) for f in (prob_f, omr_f, ans_f)) != ss.get("sig"):
+    st.info("업로드한 파일이 바뀌었어요. 아래 결과는 이전 파일 기준이에요. **분석 시작**을 다시 눌러 주세요.")
 if not done:
     st.markdown(
         '<div class="guide">'
