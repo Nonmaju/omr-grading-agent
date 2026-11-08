@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import time
+from functools import lru_cache
 from pathlib import Path
 
 import httpx
@@ -70,8 +71,16 @@ def _key() -> str:
     return k
 
 
+@lru_cache(maxsize=1)
+def _openai(key: str) -> OpenAI:
+    return OpenAI(api_key=key, max_retries=0)
+
+
 def _client() -> OpenAI:
-    return OpenAI(api_key=_key(), max_retries=0)
+    return _openai(_key())  # 클라이언트(연결·SSL 설정)를 재사용해 호출마다 드는 준비 시간을 없앤다
+
+
+_http = httpx.Client()  # Decisions API용 연결 재사용(스레드 안전)
 
 
 # ---------------------------------------------------------------- 분류
@@ -93,7 +102,7 @@ def classify_decisions(text: str, timeout: float) -> tuple[str, float]:
             "choices": [{"value": k, "description": v} for k, v in INTENTS.items()],
         }],
     }
-    r = httpx.post("https://api.openai.com/v1/decisions", json=body, timeout=timeout,
+    r = _http.post("https://api.openai.com/v1/decisions", json=body, timeout=timeout,
                    headers={"Authorization": f"Bearer {_key()}"})
     r.raise_for_status()
     a = r.json()["answers"][0]
