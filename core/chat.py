@@ -103,11 +103,14 @@ def classify(question: str, history: list[dict], deadline: float) -> tuple[str, 
 
 # ---------------------------------------------------------------- 조회 (순수 코드)
 def _student_number(question: str, history: list[dict]) -> int | None:
-    pats = [r"(\d+)\s*번", r"(\d+)\s*학생", r"(\d+)"]
-    for text in [question] + [m["content"] for m in reversed(history) if m["role"] == "user"][:2]:
-        for p in pats:
-            if m := re.search(p, text):
-                return int(m.group(1))
+    """현재 질문 → 직전 대화(사용자·도우미 모두, 최신순) 순으로 학생 번호를 찾는다. ("그 학생" 같은 후속 질문 대응)"""
+    for m in re.finditer(r"(\d+)\s*(?:번|학생)", question):
+        return int(m.group(1))
+    if m := re.search(r"(\d+)", question):
+        return int(m.group(1))
+    for msg in reversed(history[-4:]):
+        if m := re.search(r"(\d+)\s*(?:번|학생)", msg["content"]):
+            return int(m.group(1))
     return None
 
 
