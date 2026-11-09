@@ -150,15 +150,6 @@ python -m pytest -q                    # 테스트
 python -X utf8 scripts/scenario.py     # 평가 질문 시나리오(실제 API 호출)
 ```
 
-## 배포 (Streamlit Community Cloud)
-
-1. https://share.streamlit.io 에서 이 저장소의 `app.py`를 선택해 배포
-2. App settings → Secrets에 `OPENAI_API_KEY = "sk-..."` 추가
-3. Sharing을 공개로 설정해 로그인 없이 접속되게 한다
-4. 제출 전과 평가 직전에 한 번 접속해 앱을 깨워 둔다. (Community Cloud는 일정 기간 접속이 없으면 앱이 잠들며 첫 접속에 수십 초가 걸릴 수 있다)
-
-`main`에 푸시하면 자동으로 다시 배포됩니다.
-
 ## 한계
 
 - 평가용 120명 데이터는 개발용 10명 샘플과 같은 형식이라고 가정했다.
